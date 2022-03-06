@@ -149,10 +149,15 @@ Yt = np.row_stack((np.zeros((160,1)),np.ones((160,1)),np.ones((160,1))+1))
 train_idx = np.concatenate((np.arange(0,100),np.arange(160,260),np.arange(320,420))).reshape(-1,)
 test_idx = np.concatenate((np.arange(100,160),np.arange(260,320),np.arange(420,480))).reshape(-1,)
 
-Xt_train = Xt[train_idx,:]
 Yt_train = Yt[train_idx,:]
-Xt_test = Xt[test_idx,:]
 Yt_test = Yt[test_idx,:]
+
+os.chdir(Data_generated_dir)
+GAN_model_name = 'NoiseAdding0.7_Cycle-GAN_S2T_three layers_nonsaturating_separateGDE_dim100_epoch2000_G initial_lr0.001_D initial_lr0.0001_Grec initial_lr0.005_beta1_alpha1'
+Xt_train = np.load(GAN_model_name+'train.npy')
+assert Xt_train.shape[0] == Yt_train.shape[0]
+Xt_test = np.load(GAN_model_name+'test.npy')
+assert Xt_test.shape[0] == Yt_test.shape[0]
 
 Ds = [10,20,50,80,100]
 alphas = [10**i for i in np.random.uniform(low=-3, high=3, size=20)]
@@ -179,17 +184,24 @@ for D in Ds:
             ### ---- Direct Prediction --- ###
             lda_base = LinearDiscriminantAnalysis(solver='lsqr')
             svm_base = SVC()
+            knn_base = KNeighborsClassifier()
             rf_base = RandomForestClassifier()
 
             ### --- With Hyperparameter Tuning --- ###
-            model_list = [lda_base, svm_base, rf_base]
-            model_name = ['lda', 'svm', 'rf']
-            # Hyperparameters
+
+            # model_list = [lda_base, svm_base, knn_base, rf_base]
+            #model_name = ['lda', 'svm', 'knn', 'rf']
+            # Parameters
             ldaPara = {'shrinkage': [10**i for i in np.random.uniform(low=-3, high=0, size=20)]}
             svmPara = {'C': [10**i for i in np.random.uniform(low=-3, high=2, size=20)], 'kernel': ['linear','rbf', 'sigmoid'],
                        'gamma': ['scale', 'auto']}
+            knnPara = {'n_neighbors': np.arange(0,5)*2+1}
             rfPara = {'n_estimators': [50,100,200,300], 'max_depth': [4, 5, 6, 7, 8, 9, 10, 12, 15]}
-            para_list = [ldaPara, svmPara, knnPara, rfPara]
+            #para_list = [ldaPara, svmPara, knnPara, rfPara]
+
+            model_list = [rf_base]
+            model_name = ['rf']
+            para_list = [rfPara]
             paraDict = {}
             bestModelDict = {}
             for i in range(len(model_list)):
@@ -199,7 +211,7 @@ for D in Ds:
                 bestModelDict[model_name[i]] = bestModel
 
             os.chdir(Dir_hyperparameters)
-            joblib.dump(paraDict,filename='DRCA_dim'+str(D)+'_alpha' + str(alpha)+'_best hyperparameters')
+            joblib.dump(paraDict,filename='GANDRCA_RF_dim'+str(D)+'_alpha' + str(alpha)+'_best hyperparameters')
 
             ### ---- Direct Prediction --- ###
             results_dict = {}
@@ -221,7 +233,7 @@ for D in Ds:
                 print(';'.join([model_name,str(D),str(alpha)] + result_list))
 
             os.chdir(Dir_results)
-            joblib.dump(results_dict,filename='DRCA_dim'+str(D)+'_alpha' + str(alpha)+'_results')
+            joblib.dump(results_dict,filename='GANDRCA_RF_dim'+str(D)+'_alpha' + str(alpha)+'_results')
 
 
 
